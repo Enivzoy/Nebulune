@@ -15,7 +15,6 @@ import foo.starred.athen.events.PacketEvent
 import foo.starred.athen.events.TickEvent
 import foo.starred.athen.events.core.on
 import foo.starred.athen.mixin.accessors.KeyMappingAccessor
-import foo.starred.athen.modules.impl.general.LoadoutKeybinds
 import foo.starred.athen.modules.impl.general.WardrobeKeybinds
 import foo.starred.athen.utils.guiClick
 import foo.starred.kbus.extensions.runWhen
