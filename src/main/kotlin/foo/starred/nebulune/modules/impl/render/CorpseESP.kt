@@ -3,6 +3,7 @@ package foo.starred.nebulune.modules.impl.render
 import foo.starred.athen.annotations.Load
 import foo.starred.athen.annotations.OnlyIn
 import foo.starred.athen.api.location.island.impl.PresetSkyBlockIsland
+import foo.starred.athen.api.scheduling.Scheduler
 import foo.starred.athen.config.dsl.impl.category.ConfigCategory
 import foo.starred.athen.events.LocationEvent
 import foo.starred.athen.events.MessageEvent
@@ -14,6 +15,7 @@ import foo.starred.nebulune.utils.extractTracer
 import foo.starred.parallax.api.primitives.ParallaxText
 import foo.starred.snowbird.api.level
 import foo.starred.snowbird.api.player
+import foo.starred.snowbird.api.scheduling.scheduler.extensions.clientTicks
 import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.item.ItemStack
@@ -22,6 +24,8 @@ import net.minecraft.world.phys.Vec3
 import tech.thatgravyboat.skyblockapi.utils.extentions.cleanName
 import tech.thatgravyboat.skyblockapi.utils.extentions.getSkyBlockId
 import java.awt.Color
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.floor
 
 @Load
@@ -52,7 +56,8 @@ object CorpseESP : Module(
     private val umberToggle by types.switch("Umber", true)
     private val vanguardToggle by types.switch("Vanguard", true)
 
-    private val claimed = mutableListOf<Vec3>()
+    private val claimed = CopyOnWriteArrayList<Vec3>()
+    private val corpseCache = ConcurrentHashMap<Int, CorpseType>()
 
     enum class CorpseType(
         val typeName: String,
@@ -90,7 +95,7 @@ object CorpseESP : Module(
 
         companion object {
             fun fromEntity(entity: ArmorStand): CorpseType? {
-                if (entity.isInvisible || !entity.isAlive) return null
+                if (!entity.isAlive) return null
                 if (!entity.hasItemInSlot(EquipmentSlot.HEAD)) return null
                 val head = entity.getItemBySlot(EquipmentSlot.HEAD)
                 return entries.firstOrNull { it.matches(head) }
@@ -99,13 +104,24 @@ object CorpseESP : Module(
     }
 
     init {
+        Scheduler.repeat((20).clientTicks) {
+            if (corpseCache.isEmpty()) return@repeat
+            val lvl = level ?: return@repeat
+            corpseCache.entries.removeIf { lvl.getEntity(it.key)?.isAlive != true }
+        }
+
         on<WorldRenderEvent.Extract> {
             val p = player ?: return@on
             val lvl = level ?: return@on
 
             for (entity in lvl.entitiesForRendering()) {
                 val armorStand = entity as? ArmorStand ?: continue
-                val type = CorpseType.fromEntity(armorStand) ?: continue
+                val type = corpseCache[armorStand.id] ?: run {
+                    val detected = CorpseType.fromEntity(armorStand) ?: return@run null
+                    corpseCache[armorStand.id] = detected
+                    detected
+                } ?: continue
+
                 if (!type.isEnabled()) continue
 
                 val pos = armorStand.position()
@@ -172,14 +188,17 @@ object CorpseESP : Module(
 
         on<LocationEvent.Server.Connect> {
             claimed.clear()
+            corpseCache.clear()
         }
 
         on<LocationEvent.Server.Disconnect> {
             claimed.clear()
+            corpseCache.clear()
         }
 
         on<LocationEvent.SkyBlock.Island> {
             claimed.clear()
+            corpseCache.clear()
         }
     }
 }
