@@ -20,6 +20,7 @@ import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.phys.AABB
 import tech.thatgravyboat.skyblockapi.utils.extentions.getTexture
+import java.util.concurrent.ConcurrentHashMap
 
 @Load
 @OnlyIn(islands = [PresetSkyBlockIsland.HUB])
@@ -33,9 +34,13 @@ object RatESP : Module(
     private val tracer by config.switch("Tracer")
     private val thickness by config.slider("Thickness", 2, 1, 10)
     private val color by config.colorPicker("Color", MochaColorScheme.Peach.argb)
-    private val entities = mutableSetOf<Entity>()
+    private val entities = ConcurrentHashMap.newKeySet<Entity>()
 
     init {
+        Scheduler.repeat(20.clientTicks) {
+            entities.removeIf { !it.isAlive }
+        }
+
         on<PacketEvent.Receive, ClientboundSetEntityDataPacket> {
             Scheduler.schedule(2.clientTicks) {
                 val entity = level?.getEntity(id) as? Display.ItemDisplay ?: return@schedule
@@ -47,13 +52,8 @@ object RatESP : Module(
         }
 
         on<WorldRenderEvent.Extract> {
-            val it = entities.iterator()
-            while (it.hasNext()) {
-                val e = it.next()
-                if (!e.isAlive) {
-                    it.remove()
-                    continue
-                }
+            for (e in entities) {
+                if (!e.isAlive) continue
 
                 val p = e.renderPos.add(-0.5, 0.0, -0.5)
                 ParallaxBox.frame(AABB.unitCubeFromLowerCorner(p), color, thickness.toFloat(), false)
@@ -62,6 +62,14 @@ object RatESP : Module(
         }
 
         on<LocationEvent.Server.Connect> {
+            entities.clear()
+        }
+
+        on<LocationEvent.Server.Disconnect> {
+            entities.clear()
+        }
+
+        on<LocationEvent.SkyBlock.Island> {
             entities.clear()
         }
     }
