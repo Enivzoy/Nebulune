@@ -32,12 +32,12 @@ object AutoClicker : Module(
     private val left by config.group("Left clicker")
     private val `left$enabled` by left.switch("Enable left clicker")
     private val `left$key` by left.keybind("Left key")
-    private val `left$cps` by left.slider("Left CPS", 3, 5, 20)
+    private val `left$cps` by left.slider("Left CPS", 5, 5, 20)
 
     private val right by config.group("Right clicker")
     private val `right$enabled` by right.switch("Right clicker")
     private val `right$key` by right.keybind("Right key")
-    private val `right$cps` by right.slider("Right CPS", 3, 5, 20)
+    private val `right$cps` by right.slider("Right CPS", 5, 5, 20)
 
     private val customisation by config.group("Customisation")
     private val jitter by customisation.slider("CPS jitter", 2, 1, 3, "clicks")
