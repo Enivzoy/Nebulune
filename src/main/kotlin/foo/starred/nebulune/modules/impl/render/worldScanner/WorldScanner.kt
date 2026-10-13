@@ -153,6 +153,22 @@ object WorldScanner: Module(
             grottoChunksMap.clear()
         }
 
+        on<LocationEvent.Server.Disconnect> {
+            scope.coroutineContext.cancelChildren()
+            grottos.clear()
+            structures.clear()
+            scannedChunks.clear()
+            grottoChunksMap.clear()
+        }
+
+        on<LocationEvent.SkyBlock.Island> {
+            scope.coroutineContext.cancelChildren()
+            grottos.clear()
+            structures.clear()
+            scannedChunks.clear()
+            grottoChunksMap.clear()
+        }
+
         on<WorldRenderEvent.Extract> {
             if (grottoConfig.enable()) {
                 for (grotto in grottos) {
@@ -202,6 +218,27 @@ object WorldScanner: Module(
         }
     }
 
+    private fun canChunkContainQuarter(chunkX: Int, chunkZ: Int, quarter: CrystalHollowsQuarter, structure: Structure): Boolean {
+        val minX = chunkX * 16
+        val maxX = minX + 15
+        val minZ = chunkZ * 16
+        val maxZ = minZ + 15
+
+        if (maxX < 201 || minX > 824 || maxZ < 201 || minZ > 824) return false
+
+        if (structure == Structure.WORM_FISHING && (maxX < 513 || maxZ < 513)) return false
+
+        return when (quarter) {
+            CrystalHollowsQuarter.JUNGLE -> minX <= 576 && minZ <= 576
+            CrystalHollowsQuarter.PRECURSOR_REMNANTS -> maxX > 448 && maxZ > 448
+            CrystalHollowsQuarter.GOBLIN_HOLDOUT -> minX <= 576 && maxZ > 448
+            CrystalHollowsQuarter.MITHRIL_DEPOSITS -> maxX > 448 && minZ <= 576
+            CrystalHollowsQuarter.NUCLEUS -> maxX >= 449 && minX <= 576 && maxZ >= 449 && minZ <= 576
+            CrystalHollowsQuarter.MAGMA_FIELDS, CrystalHollowsQuarter.ANY -> true
+            CrystalHollowsQuarter.OUT_OF_BOUND -> false
+        }
+    }
+
     private fun scanStructure(
         chunk: LevelChunk,
         structure: Structure,
@@ -215,7 +252,7 @@ object WorldScanner: Module(
         val worldZ = chunk.pos.z * 16 + z
         val worldPos = BlockPos(worldX, y, worldZ)
 
-        if (structure == Structure.WORM_FISHING && (x < 513 || y < 80 || z < 513)) return false
+        if (structure == Structure.WORM_FISHING && (worldX < 513 || y < 80 || worldZ < 513)) return false
         if (!structure.quarter.testPredicate(worldPos)) return false
 
         val blockPos = BlockPos.MutableBlockPos()
@@ -268,19 +305,33 @@ object WorldScanner: Module(
     }
 
     private fun scanChunk(chunk: LevelChunk) {
+        val chunkX = chunk.pos.x
+        val chunkZ = chunk.pos.z
+
+        val minX = chunkX * 16
+        val maxX = minX + 15
+        val minZ = chunkZ * 16
+        val maxZ = minZ + 15
+
+        val outOfBounds = maxX < 201 || minX > 824 || maxZ < 201 || minZ > 824
+
         val structuresToScan = mutableListOf<Structure>()
 
-        for (structure in Structure.entries) {
-            if (structure.config.enable() && !structures.any { it.first == structure }) {
-                structuresToScan.add(structure)
+        if (!outOfBounds) {
+            for (structure in Structure.entries) {
+                if (structure.config.enable() && !structures.any { it.first == structure }) {
+                    if (canChunkContainQuarter(chunkX, chunkZ, structure.quarter, structure)) {
+                        structuresToScan.add(structure)
+                    }
+                }
             }
         }
+
+        if (structuresToScan.isEmpty() && (!grottoConfig.enable() || outOfBounds)) return
 
         val worldPos = BlockPos.MutableBlockPos()
         val chunkPos = BlockPos.MutableBlockPos()
         val chunkJasperBlocks = mutableListOf<BlockPos>()
-        val chunkX = chunk.pos.x
-        val chunkZ = chunk.pos.z
 
         val foundStructure = structures.mapTo(mutableSetOf()) { it.first }
 
@@ -308,14 +359,14 @@ object WorldScanner: Module(
                         )
                     }
 
-                    if (grottoConfig.enable()) {
+                    if (grottoConfig.enable() && !outOfBounds) {
                         chunkPos.set(x, y, z)
                         val state = chunk.getBlockState(chunkPos)
 
                         //~ if >= 26.2 'Blocks.MAGENTA_STAINED_GLASS' -> 'Blocks.STAINED_GLASS.magenta()'
                         //~ if >= 26.2 'Blocks.MAGENTA_STAINED_GLASS_PANE' -> 'Blocks.STAINED_GLASS_PANE.magenta()'
                         if (state.`is`(Blocks.MAGENTA_STAINED_GLASS_PANE) || state.`is`(Blocks.MAGENTA_STAINED_GLASS)) {
-                            worldPos.set(chunk.pos.x * 16 + x, y, chunk.pos.z * 16 + z)
+                            worldPos.set(worldX, y, worldZ)
                             if (!CrystalHollowsQuarter.NUCLEUS.testPredicate(worldPos)) chunkJasperBlocks.add(worldPos.immutable())
                         }
                     }
