@@ -4,7 +4,9 @@ import foo.starred.athen.annotations.Load
 import foo.starred.athen.annotations.OnlyIn
 import foo.starred.athen.api.location.LocationAPI
 import foo.starred.athen.api.location.island.impl.PresetSkyBlockIsland
+import foo.starred.athen.api.scheduling.Scheduler
 import foo.starred.athen.config.dsl.impl.category.ConfigCategory
+import foo.starred.athen.events.LocationEvent
 import foo.starred.athen.events.WorldRenderEvent
 import foo.starred.athen.modules.Module
 import foo.starred.athen.utils.render.renderBoundingBox
@@ -14,6 +16,8 @@ import foo.starred.nebulune.utils.safari.*
 import foo.starred.parallax.api.primitives.ParallaxBox
 import foo.starred.snowbird.api.level
 import foo.starred.snowbird.api.player
+import foo.starred.snowbird.api.scheduling.scheduler.extensions.clientTicks
+import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.Display
 import net.minecraft.world.entity.Entity
 //? if >= 26.2
@@ -44,102 +48,102 @@ object SafariESP : Module(
 ) {
     // FLOOR DROPS
     private val floorDropGroup by config.group("Floor Drops")
-    val `floorDrop$toggle` by floorDropGroup.switch("Toggle Floor Drops")
-    val `floorDrop$only_in_biome` by floorDropGroup.switch("Toggle floor drops only in current biome")
+    val `floorDrop$toggle` by floorDropGroup.switch("Toggle Floor Drops", true)
+    val `floorDrop$only_in_biome` by floorDropGroup.switch("Toggle floor drops only in current biome", true)
     val `floorDrop$color` by floorDropGroup.colorPicker("Color", Color(0, 255, 0).rgb)
 
     // CAVERN
     private val cavernGroup by config.group("Cavern Biome")
-    val `cavern$toggle` by cavernGroup.switch("Toggle cavern")
-    val `cavern$only_in_biome` by cavernGroup.switch("Toggle cavern mobs only in cavern biome")
-    val `cavern$cavernrnfish` by cavernGroup.switch("cavernfish")
-    val `cavern$cavernrnfish_color` by cavernGroup.colorPicker("Color", Color(180, 100, 30).rgb)
-    val `cavern$flitter` by cavernGroup.switch("Flitter")
+    val `cavern$toggle` by cavernGroup.switch("Toggle cavern", true)
+    val `cavern$only_in_biome` by cavernGroup.switch("Toggle cavern mobs only in cavern biome", true)
+    val `cavern$cavernfish` by cavernGroup.switch("cavernfish", true)
+    val `cavern$cavernfish_color` by cavernGroup.colorPicker("Color", Color(180, 100, 30).rgb)
+    val `cavern$flitter` by cavernGroup.switch("Flitter", true)
     val `cavern$flitter_color` by cavernGroup.colorPicker("Color", Color(40, 90, 110).rgb)
-    val `cavern$shyworm` by cavernGroup.switch("Shyworm")
+    val `cavern$shyworm` by cavernGroup.switch("Shyworm", true)
     val `cavern$shyworm_color` by cavernGroup.colorPicker("Color", Color(80, 160, 50).rgb)
-    val `cavern$driftling` by cavernGroup.switch("Driftling")
+    val `cavern$driftling` by cavernGroup.switch("Driftling", true)
     val `cavern$driftling_color` by cavernGroup.colorPicker("Color", Color(150, 110, 60).rgb)
-    val `cavern$chuckwalla` by cavernGroup.switch("Chuckwalla")
+    val `cavern$chuckwalla` by cavernGroup.switch("Chuckwalla", true)
     val `cavern$chuckwalla_color` by cavernGroup.colorPicker("Color", Color(60, 50, 40).rgb)
-    val `cavern$rockmite` by cavernGroup.switch("Rockmite")
+    val `cavern$rockmite` by cavernGroup.switch("Rockmite", true)
     val `cavern$rockmite_color` by cavernGroup.colorPicker("Color", Color(160, 160, 160).rgb)
-    val `cavern$scrappy` by cavernGroup.switch("Scrappy")
+    val `cavern$scrappy` by cavernGroup.switch("Scrappy", true)
     val `cavern$scrappy_color` by cavernGroup.colorPicker("Color", Color(190, 120, 130).rgb)
-    val `cavern$snoozle` by cavernGroup.switch("Snoozle")
+    val `cavern$snoozle` by cavernGroup.switch("Snoozle", true)
     val `cavern$snoozle_color` by cavernGroup.colorPicker("Color", Color(160, 40, 40).rgb)
-    val `cavern$gemzie` by cavernGroup.switch("Gemzie")
+    val `cavern$gemzie` by cavernGroup.switch("Gemzie", true)
     val `cavern$gemzie_color` by cavernGroup.colorPicker("Color", Color(150, 180, 240).rgb)
 
     // FOREST
     private val forestGroup by config.group("Forest Biome")
-    val `forest$toggle` by forestGroup.switch("Toggle Forest")
-    val `forest$only_in_biome` by forestGroup.switch("Toggle forest mobs only in forest biome")
-    val `forest$foxtrot` by forestGroup.switch("Foxtrot")
+    val `forest$toggle` by forestGroup.switch("Toggle Forest", true)
+    val `forest$only_in_biome` by forestGroup.switch("Toggle forest mobs only in forest biome", true)
+    val `forest$foxtrot` by forestGroup.switch("Foxtrot", true)
     val `forest$foxtrot_color` by forestGroup.colorPicker("Color", Color(240, 110, 20).rgb)
-    val `forest$bluebird` by forestGroup.switch("Bluebird")
+    val `forest$bluebird` by forestGroup.switch("Bluebird", true)
     val `forest$bluebird_color` by forestGroup.colorPicker("Color", Color(20, 50, 200).rgb)
-    val `forest$honeybug` by forestGroup.switch("Honeybug")
+    val `forest$honeybug` by forestGroup.switch("Honeybug", true)
     val `forest$honeybug_color` by forestGroup.colorPicker("Color", Color(240, 190, 30).rgb)
-    val `forest$treefrog` by forestGroup.switch("Treefrog")
+    val `forest$treefrog` by forestGroup.switch("Treefrog", true)
     val `forest$treefrog_color` by forestGroup.colorPicker("Color", Color(110, 130, 90).rgb)
-    val `forest$woodchucker` by forestGroup.switch("Woodchucker")
+    val `forest$woodchucker` by forestGroup.switch("Woodchucker", true)
     val `forest$woodchucker_color` by forestGroup.colorPicker("Color", Color(80, 70, 70).rgb)
-    val `forest$fluffling` by forestGroup.switch("Fluffling")
+    val `forest$fluffling` by forestGroup.switch("Fluffling", true)
     val `forest$fluffling_color` by forestGroup.colorPicker("Color", Color(230, 230, 230).rgb)
-    val `forest$hideonfloor` by forestGroup.switch("Hideonfloor")
+    val `forest$hideonfloor` by forestGroup.switch("Hideonfloor", true)
     val `forest$hideonfloor_color` by forestGroup.colorPicker("Color", Color(100, 130, 40).rgb)
-    val `forest$parakeet` by forestGroup.switch("Parakeet")
+    val `forest$parakeet` by forestGroup.switch("Parakeet", true)
     val `forest$parakeet_color` by forestGroup.colorPicker("Color", Color(90, 200, 50).rgb)
-    val `forest$macaw` by forestGroup.switch("Macaw")
+    val `forest$macaw` by forestGroup.switch("Macaw", true)
     val `forest$macaw_color` by forestGroup.colorPicker("Color", Color(210, 30, 30).rgb)
 
     // HAUNTED
     private val hauntedGroup by config.group("Haunted Biome")
-    val `haunted$toggle` by hauntedGroup.switch("Toggle Haunted")
-    val `haunted$only_in_biome` by hauntedGroup.switch("Toggle haunted mobs only in haunted biome")
-    val `haunted$areita` by hauntedGroup.switch("Areita")
+    val `haunted$toggle` by hauntedGroup.switch("Toggle Haunted", true)
+    val `haunted$only_in_biome` by hauntedGroup.switch("Toggle haunted mobs only in haunted biome", true)
+    val `haunted$areita` by hauntedGroup.switch("Areita", true)
     val `haunted$areita_color` by hauntedGroup.colorPicker("Color", Color(20, 90, 90).rgb)
-    val `haunted$bloodbat` by hauntedGroup.switch("Bloodbat")
+    val `haunted$bloodbat` by hauntedGroup.switch("Bloodbat", true)
     val `haunted$bloodbat_color` by hauntedGroup.colorPicker("Color", Color(90, 40, 30).rgb)
-    val `haunted$duplico` by hauntedGroup.switch("Duplico")
+    val `haunted$duplico` by hauntedGroup.switch("Duplico", true)
     val `haunted$duplico_color` by hauntedGroup.colorPicker("Color", Color(120, 120, 120).rgb)
-    val `haunted$gazer` by hauntedGroup.switch("Gazer")
+    val `haunted$gazer` by hauntedGroup.switch("Gazer", true)
     val `haunted$gazer_color` by hauntedGroup.colorPicker("Color", Color(30, 50, 70).rgb)
-    val `haunted$litterbug` by hauntedGroup.switch("Litterbug")
+    val `haunted$litterbug` by hauntedGroup.switch("Litterbug", true)
     val `haunted$litterbug_color` by hauntedGroup.colorPicker("Color", Color(130, 50, 170).rgb)
-    val `haunted$solsnatcher` by hauntedGroup.switch("Solsnatcher")
+    val `haunted$solsnatcher` by hauntedGroup.switch("Solsnatcher", true)
     val `haunted$solsnatcher_color` by hauntedGroup.colorPicker("Color", Color(50, 60, 130).rgb)
-    val `haunted$gimmiegold` by hauntedGroup.switch("Gimmiegold")
+    val `haunted$gimmiegold` by hauntedGroup.switch("Gimmiegold", true)
     val `haunted$gimmiegold_color` by hauntedGroup.colorPicker("Color", Color(255, 210, 0).rgb)
-    val `haunted$hideonwall` by hauntedGroup.switch("Hideonwall")
+    val `haunted$hideonwall` by hauntedGroup.switch("Hideonwall", true)
     val `haunted$hideonwall_color` by hauntedGroup.colorPicker("Color", Color(140, 70, 140).rgb)
-    val `haunted$hideyho` by hauntedGroup.switch("Hideyho")
+    val `haunted$hideyho` by hauntedGroup.switch("Hideyho", true)
     val `haunted$hideyho_color` by hauntedGroup.colorPicker("Color", Color(190, 190, 190).rgb)
-    val `haunted$doomspiral` by hauntedGroup.switch("Doomspiral")
+    val `haunted$doomspiral` by hauntedGroup.switch("Doomspiral", true)
     val `haunted$doomspiral_color` by hauntedGroup.colorPicker("Color", Color(20, 140, 150).rgb)
 
     // ICY
     private val icyGroup by config.group("Icy Biome")
-    val `icy$toggle` by icyGroup.switch("Toggle Icy")
-    val `icy$only_in_biome` by icyGroup.switch("Toggle icy mobs only in icy biome")
-    val `icy$strongarm` by icyGroup.switch("Strongarm")
+    val `icy$toggle` by icyGroup.switch("Toggle Icy", true)
+    val `icy$only_in_biome` by icyGroup.switch("Toggle icy mobs only in icy biome", true)
+    val `icy$strongarm` by icyGroup.switch("Strongarm", true)
     val `icy$strongarm_color` by icyGroup.colorPicker("Color", Color(220, 120, 20).rgb)
-    val `icy$tepid` by icyGroup.switch("Tepid")
+    val `icy$tepid` by icyGroup.switch("Tepid", true)
     val `icy$tepid_color` by icyGroup.colorPicker("Color", Color(200, 210, 200).rgb)
-    val `icy$polaris` by icyGroup.switch("Polaris")
+    val `icy$polaris` by icyGroup.switch("Polaris", true)
     val `icy$polaris_color` by icyGroup.colorPicker("Color", Color(255, 255, 255).rgb)
-    val `icy$shuddersquid` by icyGroup.switch("Shuddersquid")
+    val `icy$shuddersquid` by icyGroup.switch("Shuddersquid", true)
     val `icy$shuddersquid_color` by icyGroup.colorPicker("Color", Color(50, 190, 180).rgb)
-    val `icy$billygoat` by icyGroup.switch("Billygoat")
+    val `icy$billygoat` by icyGroup.switch("Billygoat", true)
     val `icy$billygoat_color` by icyGroup.colorPicker("Color", Color(230, 220, 200).rgb)
-    val `icy$mantis_shrimp` by icyGroup.switch("Mantis Shrimp")
+    val `icy$mantis_shrimp` by icyGroup.switch("Mantis Shrimp", true)
     val `icy$mantis_shrimp_color` by icyGroup.colorPicker("Color", Color(40, 90, 100).rgb)
-    val `icy$nozzlenose` by icyGroup.switch("Nozzlenose")
+    val `icy$nozzlenose` by icyGroup.switch("Nozzlenose", true)
     val `icy$nozzlenose_color` by icyGroup.colorPicker("Color", Color(140, 150, 170).rgb)
-    val `icy$troodon` by icyGroup.switch("Troodon")
+    val `icy$troodon` by icyGroup.switch("Troodon", true)
     val `icy$troodon_color` by icyGroup.colorPicker("Color", Color(120, 80, 190).rgb)
-    val `icy$wumpa` by icyGroup.switch("Wumpa")
+    val `icy$wumpa` by icyGroup.switch("Wumpa", true)
     val `icy$wumpa_color` by icyGroup.colorPicker("Color", Color(100, 90, 90).rgb)
 
     private class BiomeConfig(
@@ -150,7 +154,7 @@ object SafariESP : Module(
 
     private val safariRegistry: Map<SafariBiome, BiomeConfig> = mapOf(
         SafariBiome.CAVERN to BiomeConfig({ `cavern$toggle` }, { `cavern$only_in_biome` }, listOf(
-            SafariMob(MobIdentifier.SpecificTropicalFish("CLAYFISH", "GRAY", "BROWN"), { `cavern$cavernrnfish` }, { `cavern$cavernrnfish_color` }),
+            SafariMob(MobIdentifier.SpecificTropicalFish("CLAYFISH", "GRAY", "BROWN"), { `cavern$cavernfish` }, { `cavern$cavernfish_color` }),
             SafariMob(MobIdentifier.TexturedItemDisplay(SafariTextures.FLITTER), { `cavern$flitter` }, { `cavern$flitter_color` }),
             SafariMob(MobIdentifier.TexturedHead(SafariTextures.SHYWORM), { `cavern$shyworm` }, { `cavern$shyworm_color` }),
             SafariMob(MobIdentifier.TexturedHead(SafariTextures.DRIFTLING), { `cavern$driftling` }, { `cavern$driftling_color` }),
