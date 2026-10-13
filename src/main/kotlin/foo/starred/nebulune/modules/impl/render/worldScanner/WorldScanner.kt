@@ -23,6 +23,9 @@ import net.minecraft.world.phys.AABB
 //? if >= 26.2
 //import net.minecraft.world.phys.Vec3
 import java.awt.Color
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.cancelChildren
 
 @Load
 @OnlyIn(islands = [PresetSkyBlockIsland.CRYSTAL_HOLLOWS])
@@ -127,20 +130,23 @@ object WorldScanner: Module(
     private val wormFishing by config.group("Worm Fishing")
     val wormFishingConfig = createStructureEspConfig(wormFishing, Color(255, 85, 85).rgb)
 
-    private val grottos = mutableListOf<Triple<Pair<Int, Int>, BlockPos, Int>>()
-    private val structures = mutableListOf<Pair<Structure, Triple<Int, Int, Int>>>()
-    private val scannedChunks = mutableListOf<Pair<Int, Int>>()
-    private val grottoChunksMap = mutableMapOf<Pair<Int, Int>, Triple<Pair<Int, Int>, BlockPos, Int>>()
+    private val grottos = CopyOnWriteArrayList<Triple<Pair<Int, Int>, BlockPos, Int>>()
+    private val structures = CopyOnWriteArrayList<Pair<Structure, Triple<Int, Int, Int>>>()
+    private val scannedChunks = ConcurrentHashMap.newKeySet<Pair<Int, Int>>()
+    private val grottoChunksMap = ConcurrentHashMap<Pair<Int, Int>, Triple<Pair<Int, Int>, BlockPos, Int>>()
 
     private val scope = CoroutineScope(Dispatchers.Default.limitedParallelism(1))
 
     init {
         on<ClientChunkEvent.Load> {
-            if (Pair(chunk.pos.x, chunk.pos.z) !in scannedChunks) scope.launch { scanChunk(chunk) }
-            else scannedChunks.add(Pair(chunk.pos.x, chunk.pos.z))
+            val chunkPos = chunk.pos.x to chunk.pos.z
+            if (scannedChunks.add(chunkPos)) {
+                scope.launch { scanChunk(chunk) }
+            }
         }
 
         on<LocationEvent.Server.Connect> {
+            scope.coroutineContext.cancelChildren()
             grottos.clear()
             structures.clear()
             scannedChunks.clear()
