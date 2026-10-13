@@ -49,7 +49,7 @@ object AutoSoulcry : Module(
             val item = player.mainHandItem
 
             if (item.getData(DataTypes.ID) !in ids) return@on reset()
-            if (hitbox && client.hitResult as? EntityHitResult != slayer.entity) return@on
+            if (hitbox && (client.hitResult as? EntityHitResult)?.entity != slayer.entity) return@on
             if (player.cooldowns.isOnCooldown(item)) return@on
 
             val m = if ("ultimate_wise" in item.enchants()) 100 else 200
