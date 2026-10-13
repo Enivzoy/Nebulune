@@ -2,7 +2,6 @@
 
 package foo.starred.nebulune.modules.impl.general
 
-import com.mojang.blaze3d.platform.InputConstants
 import foo.starred.athen.annotations.Load
 import foo.starred.athen.api.messaging.enums.MessagePrefixType
 import foo.starred.athen.api.messaging.impl.MessagingAPI.mod
@@ -19,6 +18,8 @@ import foo.starred.athen.mixin.accessors.KeyMappingAccessor
 import foo.starred.athen.modules.impl.general.LoadoutKeybinds
 import foo.starred.athen.utils.guiClick
 import foo.starred.kbus.extensions.runWhen
+import foo.starred.nebulune.accessors.ILoadoutSlot
+import foo.starred.nebulune.mixin.accessors.LoadoutKeybindsAccessor
 import foo.starred.nebulune.utils.command
 import foo.starred.snowbird.api.client
 import foo.starred.snowbird.api.command
@@ -36,44 +37,9 @@ import net.minecraft.network.protocol.game.ServerboundContainerClosePacket
 @Load
 object LoadoutHelper {
 
-    class SlotWrapper(val obj: Any) {
-        private fun getField(name: String): Any? {
-            return try {
-                val f = obj.javaClass.getDeclaredField(name)
-                f.isAccessible = true
-                f.get(obj)
-            } catch (e: Exception) {
-                null
-            }
-        }
-
-        private fun getMethod(name: String): Any? {
-            return try {
-                val m = obj.javaClass.getDeclaredMethod(name)
-                m.isAccessible = true
-                m.invoke(obj)
-            } catch (e: Exception) {
-                null
-            }
-        }
-
-        val index: Int get() = getField("index") as? Int ?: -1
-        val idx: Int get() = getField("idx") as? Int ?: -1
-        val value: InputConstants.Key get() = getMethod("getValue") as? InputConstants.Key ?: InputConstants.UNKNOWN
-        val equipped: Boolean get() = getMethod("getEquipped") as? Boolean ?: false
-    }
-
-    private val wrappedSlots: List<SlotWrapper>
-        get() {
-            return try {
-                val field = LoadoutKeybinds::class.java.getDeclaredField("slots")
-                field.isAccessible = true
-                val list = field.get(LoadoutKeybinds) as? List<*> ?: return emptyList()
-                list.filterNotNull().map { SlotWrapper(it) }
-            } catch (e: Exception) {
-                emptyList()
-            }
-        }
+    @Suppress("UNCHECKED_CAST", "CAST_NEVER_SUCCEEDS")
+    private val wrappedSlots: List<ILoadoutSlot>
+        get() = (LoadoutKeybinds as LoadoutKeybindsAccessor).`nebulune$getSlots`() as List<ILoadoutSlot>
 
     val autoClose by LoadoutKeybinds.config.switch("Auto close after use")
     private val autoEquip = LoadoutKeybinds.config.switch("Auto equip").unique("autoEquip")
@@ -120,7 +86,7 @@ object LoadoutHelper {
             client.options.keyShift
         )
 
-    private var slot0: SlotWrapper? = null
+    private var slot0: ILoadoutSlot? = null
     private var swapping: Boolean = false
     private var inMenu: Boolean = false
     private var id: Int = -1
