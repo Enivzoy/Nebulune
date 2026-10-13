@@ -21,7 +21,4 @@ fun leftClick() {
     KeyMapping.set(key, false)
 }
 
-fun Player.getSkinTexture(): String? = gameProfile.properties.entries()
-    .filter { it.key == "textures" }
-    .map { it.value }
-    .firstOrNull { it.name == "textures" }?.value
+fun Player.getSkinTexture(): String? = gameProfile.properties.get("textures").firstOrNull()?.value
