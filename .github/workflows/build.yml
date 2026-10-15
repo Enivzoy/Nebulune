@@ -1,4 +1,5 @@
 name: Build and Notify
+on: workflow_dispatch
 on:
   push:
 
